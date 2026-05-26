@@ -1,0 +1,154 @@
+version: '3.8'
+
+services:
+
+  # ─── DATABASE ───────────────────────────────────────────────
+  mongodb:
+    image: mongo:7
+    container_name: mediconnect-mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - mediconnect-network
+    restart: unless-stopped
+
+  # ─── SERVICE REGISTRY ───────────────────────────────────────
+  eureka-server:
+    build: ./eureka-server
+    container_name: mediconnect-eureka
+    ports:
+      - "8761:8761"
+    networks:
+      - mediconnect-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8761/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # ─── API GATEWAY ────────────────────────────────────────────
+  api-gateway:
+    build: ./api-gateway
+    container_name: mediconnect-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      EUREKA_URI: http://eureka-server:8761/eureka/
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - mediconnect-network
+    restart: unless-stopped
+
+  # ─── AUTH SERVICE ────────────────────────────────────────────
+  auth-service:
+    build: ./auth-service
+    container_name: mediconnect-auth
+    ports:
+      - "8081:8081"
+    environment:
+      SPRING_DATA_MONGODB_URI: mongodb://mongodb:27017/mediconnect_auth
+      EUREKA_URI: http://eureka-server:8761/eureka/
+    depends_on:
+      - mongodb
+      - eureka-server
+    networks:
+      - mediconnect-network
+    restart: unless-stopped
+
+  # ─── PATIENT SERVICE ─────────────────────────────────────────
+  patient-service:
+    build: ./patient-service
+    container_name: mediconnect-patient
+    ports:
+      - "8082:8082"
+    environment:
+      SPRING_DATA_MONGODB_URI: mongodb://mongodb:27017/mediconnect_patients
+      EUREKA_URI: http://eureka-server:8761/eureka/
+    depends_on:
+      - mongodb
+      - eureka-server
+    networks:
+      - mediconnect-network
+    restart: unless-stopped
+
+  # ─── DOCTOR SERVICE ──────────────────────────────────────────
+  doctor-service:
+    build: ./doctor-service
+    container_name: mediconnect-doctor
+    ports:
+      - "8083:8083"
+    environment:
+      SPRING_DATA_MONGODB_URI: mongodb://mongodb:27017/mediconnect_doctors
+      EUREKA_URI: http://eureka-server:8761/eureka/
+    depends_on:
+      - mongodb
+      - eureka-server
+    networks:
+      - mediconnect-network
+    restart: unless-stopped
+
+  # ─── APPOINTMENT SERVICE ─────────────────────────────────────
+  appointment-service:
+    build: ./appointment-service
+    container_name: mediconnect-appointment
+    ports:
+      - "8084:8084"
+    environment:
+      SPRING_DATA_MONGODB_URI: mongodb://mongodb:27017/mediconnect_appointments
+      EUREKA_URI: http://eureka-server:8761/eureka/
+    depends_on:
+      - mongodb
+      - eureka-server
+      - patient-service
+      - doctor-service
+    networks:
+      - mediconnect-network
+    restart: unless-stopped
+
+  # ─── PRESCRIPTION SERVICE ────────────────────────────────────
+  prescription-service:
+    build: ./prescription-service
+    container_name: mediconnect-prescription
+    ports:
+      - "8085:8085"
+    environment:
+      SPRING_DATA_MONGODB_URI: mongodb://mongodb:27017/mediconnect_prescriptions
+      EUREKA_URI: http://eureka-server:8761/eureka/
+    depends_on:
+      - mongodb
+      - eureka-server
+      - patient-service
+      - doctor-service
+    networks:
+      - mediconnect-network
+    restart: unless-stopped
+
+  # ─── NOTIFICATION SERVICE ────────────────────────────────────
+  notification-service:
+    build: ./notification-service
+    container_name: mediconnect-notification
+    ports:
+      - "8086:8086"
+    environment:
+      SPRING_DATA_MONGODB_URI: mongodb://mongodb:27017/mediconnect_notifications
+      EUREKA_URI: http://eureka-server:8761/eureka/
+      SPRING_MAIL_USERNAME: ${MAIL_USERNAME}   # set in .env file
+      SPRING_MAIL_PASSWORD: ${MAIL_PASSWORD}   # set in .env file
+    depends_on:
+      - mongodb
+      - eureka-server
+    networks:
+      - mediconnect-network
+    restart: unless-stopped
+
+networks:
+  mediconnect-network:
+    driver: bridge
+
+volumes:
+  mongo_data:

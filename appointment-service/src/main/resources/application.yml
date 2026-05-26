@@ -1,0 +1,17 @@
+server:
+  port: 8084
+spring:
+  application:
+    name: appointment-service
+  data:
+    mongodb:
+      uri: mongodb://localhost:27017/mediconnect_appointments
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+  instance:
+    prefer-ip-address: true
+logging:
+  level:
+    com.mediconnect: DEBUG

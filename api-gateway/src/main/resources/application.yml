@@ -1,0 +1,72 @@
+server:
+  port: 8080  # All external traffic comes through this port
+
+spring:
+  application:
+    name: api-gateway
+
+  cloud:
+    gateway:
+      routes:
+        # AUTH SERVICE routes (no JWT filter — these are public)
+        - id: auth-service
+          uri: lb://auth-service      # lb:// means "load balance using Eureka"
+          predicates:
+            - Path=/api/auth/**       # Any request to /api/auth/* goes to auth-service
+
+        # PATIENT SERVICE routes
+        - id: patient-service
+          uri: lb://patient-service
+          predicates:
+            - Path=/api/patients/**
+          filters:
+            - AuthenticationFilter    # JWT required for all patient routes
+
+        # DOCTOR SERVICE routes
+        - id: doctor-service
+          uri: lb://doctor-service
+          predicates:
+            - Path=/api/doctors/**
+          filters:
+            - AuthenticationFilter
+
+        # APPOINTMENT SERVICE routes
+        - id: appointment-service
+          uri: lb://appointment-service
+          predicates:
+            - Path=/api/appointments/**
+          filters:
+            - AuthenticationFilter
+
+        # PRESCRIPTION SERVICE routes
+        - id: prescription-service
+          uri: lb://prescription-service
+          predicates:
+            - Path=/api/prescriptions/**
+          filters:
+            - AuthenticationFilter
+
+        # NOTIFICATION SERVICE routes
+        - id: notification-service
+          uri: lb://notification-service
+          predicates:
+            - Path=/api/notifications/**
+          filters:
+            - AuthenticationFilter
+
+# Eureka client configuration
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+  instance:
+    prefer-ip-address: true
+
+# JWT secret — must be Base64 encoded, same secret used in auth-service
+jwt:
+  secret: bWVkaWNvbm5lY3Qtc2VjcmV0LWtleS1mb3ItaGVhbHRoY2FyZS1wbGF0Zm9ybQ==
+
+# Show gateway routes in logs (helpful for debugging)
+logging:
+  level:
+    org.springframework.cloud.gateway: DEBUG

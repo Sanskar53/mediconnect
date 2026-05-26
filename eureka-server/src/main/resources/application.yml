@@ -1,0 +1,19 @@
+server:
+  port: 8761  # Standard port for Eureka Server
+
+spring:
+  application:
+    name: eureka-server  # Name of this service
+
+eureka:
+  instance:
+    hostname: localhost
+  client:
+    # This IS the registry, so it should NOT register with itself
+    register-with-eureka: false
+    fetch-registry: false
+    service-url:
+      defaultZone: http://${eureka.instance.hostname}:${server.port}/eureka/
+
+  server:
+    wait-time-in-ms-when-sync-empty: 0  # Start fast in development
